@@ -18,4 +18,47 @@
 
 通常来说，规则中都会带 `prerequisites`，一旦 `prerequisites` 文件有改动，`recipe` 就会重新生成 `target`。但规则中也可以不带 `prerequisites`，例如，`target` 为 `clean` 的这条规则就没有 `prerequisites`，`clean` 是一个伪目标，用来删除文件，后面会详细讲。 
 
+规则解释了哪些文件在什么时间该怎么编译。`make` 在执行这条 `recipe` 时，会使用 `prerequisites` 生成或更新 `target`。规则也可以定义在何时执行一个动作，具体请看第 `4` 章【如何书写规则】，第 `23` 页。
+
+除了规则，`makefile` 还可以包含其他内容，当然，最简单的 `makefile` 确实只需要包含规则就行了。另外，有些规则看起来可能会比上面这个格式更加复杂，但是八九不离十的。 
+
+
 ## 一个简单的 `Makefile`
+
+下面我们来看一个很直白的 makefile，它要 make 的最终目标是一个可执行文件 edit，它依赖于 8 个目标文件，这 8 个目标文件呢，又各自依赖于 8 个 C 源文件和 3 个头文件。
+
+这 3 个头文件分别是 `defs.h`，`command.h` 和 `buffer.h`，其中，所有 C 文件都包含了 `defs.h`，而用于定义编辑命令的文件又包含了 `command.h`，用于底层更改缓存的文件包含了`buffer.h`。
+```Makefile
+    edit : main.o kbd.o command.o display.o \
+            insert.o search.o files.o utils.o
+            cc -o edit main.o kbd.o command.o display.o \
+                    insert.o search.o files.o utils.o
+    main.o : main.c defs.h
+            cc -c main.c
+    kbd.o : kbd.c defs.h command.h
+            cc -c kbd.c
+    command.o : command.c defs.h command.h
+            cc -c command.c
+    display.o : display.c defs.h buffer.h
+            cc -c display.c
+    insert.o : insert.c defs.h buffer.h
+            cc -c insert.c
+    search.o : search.c defs.h buffer.h
+            cc -c search.c
+    files.o : files.c defs.h buffer.h command.h
+            cc -c files.c
+    utils.o : utils.c defs.h
+            cc -c utils.c
+    clean :
+            rm edit main.o kbd.o command.o display.o \
+                    insert.o search.o files.o utils.o
+```
+这里要提一下上面用到的反斜杠 `\`，它用于将很长的一行分成易于阅读的两行，只是为了阅读方便好看，再没有其他用处，具体请查看第 `3.1.1` 节【分割很长的行】，第 `12` 页。
+
+好，我们来运行这个 `makefile`，只需要输入：`make`，就可以得到 edit 这个可执行文件。再输入：`make clean`，你会发现 `edit` 及其他目标文件都不见了。
+
+我们来仔细看看这个 `makefile`，`target` 有可执行文件 `edit`、目标文件 `main.o`、`kdb.o`等。`prerequisites` 有 `main.c` 和 `defs.h`等，实际上，每个 `.o` 文件即是一个 `target`，同时又是一个 `prerequisite`。`recipe` 有 `cc -c main.c` 和 `cc -c kbd.c` 等。
+
+只要 `prerequisite` 有修改，其 `target` 就需要重新编译或链接。另外，如果 `prerequisite` 是自动生成的，那必须先更新它们。回到例子中，`edit` 依赖于各个目标文件，而目标文件又依赖于其源文件和头文件，拿 `main.o` 来说，它依赖于 `main.c` 和 `defs.h`。
+
+target 和 prerequisite 组成一行，而底下紧跟的是 recipe，用来描述如何更新 target 文件。
