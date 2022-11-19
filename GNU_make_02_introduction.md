@@ -61,4 +61,10 @@
 
 只要 `prerequisite` 有修改，其 `target` 就需要重新编译或链接。另外，如果 `prerequisite` 是自动生成的，那必须先更新它们。回到例子中，`edit` 依赖于各个目标文件，而目标文件又依赖于其源文件和头文件，拿 `main.o` 来说，它依赖于 `main.c` 和 `defs.h`。
 
-target 和 prerequisite 组成一行，而底下紧跟的是 recipe，用来描述如何更新 target 文件。
+`target` 和 `prerequisite` 组成一行，而底下一行紧跟的是 `recipe`，用来描述如何更新 `target` 文件。`recipe` 前面必跟一个 `tab`（前面提到过，如果改过 `.RECIPEPREFIX` 的值，那就是这个新设定的字符），用于区分不同行的多个 `recipe`。（记住，`make` 并不知道 `recipe` 会怎么运行，完全是由你来定的。`make` 只知道有 `target` 需要更新了，那它就会来执行这个 `recipe`。）
+
+`clean` 并不是一个文件，仅仅是一个动作的名字。通常，`clean` 不会作为任何规则里面的 `prerequisite`，谁会动不动就去删除文件呢，因此，只有你主动调用它的时候，它才会执行。`clean` 本身不会作为 `prerequisite`，那它本身会依赖其他 `prerequisite` 吗？答案是否定的，因此，`clean` 就一个用处，就是执行清除这个动作。这类不涉及文件，只是一个动作的 `target`，我们称之为 `伪目标`。更多请参考第 `4.5` 节【伪目标】，第 `31` 页。而第 `5.5` 节【`Recipes` 中的错误】，第 `54` 页，会讲在执行 `rm` 和其他命令时如何忽略错误。
+
+## 2.3 `make` 如何处理 `Makefile`
+
+默认情况下，make 是从第一个 target 开始执行的（不是）
