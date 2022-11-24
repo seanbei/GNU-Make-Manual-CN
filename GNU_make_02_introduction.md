@@ -80,3 +80,112 @@
 `make` 根据 `edit` 的依赖项是否进行了重编译，来决定是否需要对 `edit` 进行重链接。跟前面说的一样，如果 `edit` 不存在，或者 `edit` 文件的修改时间晚于任意一个其依赖性的修改时间，`make` 就会执行重链接。
 
 再看这个例子，如果我们修改了 `insert.c` 文件，然后执行 `make`，`make` 会编译这个文件来更新 `insert.o`，然后链接 `edit`。如果我们修改了 `command.h` 文件，然后执行 `make`，`make` 会重编译 `kbd.o`，`command.o` 和 `files.o`，然后链接 `edit`。
+
+## 2.4 如何用变量简化 `makefile`
+
+在前面的例子中，你会发现，所有的目标文件，我们写了两遍：
+```Makefile
+        edit : main.o kbd.o command.o display.o \
+                insert.o search.o files.o utils.o
+                cc -o edit main.o kbd.o command.o display.o \
+                        insert.o search.o files.o utils.o
+```
+这种重复的写法很容易产生错误。因为，如果我们想再新加一个目标文件，很可能会顾此失彼，加了这里，忘了那里。幸好，我们可以使用变量来简化 `makefile`，从而避免这种错误。`变量`允许你在一个地方定义一段字符串，然后在其他地方进行替换使用。（参见第 `6` 章【如何使用`变量`】）
+
+使用 `objects`、`OBJECTS`、`objs`、`OBJS`、`obj` 或 `OBJ` 这些名字的变量来替代所有的目标文件，是 `makefile` 中标准的做法。下面我们使用 `objects` 来实现这个 makefile：
+```Makefile
+        objects = main.o kbd.o command.o display.o \
+                insert.o search.o files.o utils.o
+```
+`objects` 定义好之后，在后面需要使用所有目标文件列表的地方，就可以用 `$(objects)` 来替代了。下面是替代之后的 `makefile`：
+```Makefile
+        objects = main.o kbd.o command.o display.o \
+                insert.o search.o files.o utils.o
+        edit : $(objects)
+                cc -o edit $(objects)
+        main.o : main.c defs.h
+                cc -c main.c
+        kbd.o : kbd.c defs.h command.h
+                cc -c kbd.c
+        command.o : command.c defs.h command.h
+                cc -c command.c
+        display.o : display.c defs.h buffer.h
+                cc -c display.c
+        insert.o : insert.c defs.h buffer.h
+                cc -c insert.c
+        search.o : search.c defs.h buffer.h
+                cc -c search.c
+        files.o : files.c defs.h buffer.h command.h
+                cc -c files.c
+        utils.o : utils.c defs.h
+                cc -c utils.c
+        clean :
+                rm edit $(objects)
+```
+
+## 2.5 如何让 `make` 自己来推测 `Recipes`
+
+还记得 `recipe` 是啥吗？它描述的就是规则里面要执行的那条动作，譬如将若干目标文件链接成可执行文件，又譬如将 `.c` 和 `.h` 文件编译成 `.o` 目标文件。然而对于 `C` 源码文件来说，并不需要去指定这个动作，因为 `make` 本身就隐含了一条规则：要更新一个 `.o` 文件，就需要使用 `cc -c` 命令来编译对应名字的 `.c` 文件。 例如，它会自己调用 `cc -c main.c -o main.o` 这条 `recipe` 来把 `main.c` 编译成 `main.o`。因此，我们可以省略这些目标文件的 `recipes`。（参见第10章【使用隐含规则】）
+
+更进一步，make 知道是要用`.o` 文件对应名字的 `.c` 文件，它会自动把这个 `.c` 文件加到 `prerequisite` 里。于是，我们又可以省略这个 `.c` 文件了。
+
+下面就是 `recipe` 和 `.c` 文件都省略了之后的 `makefile`：
+```Makefile
+        objects = main.o kbd.o command.o display.o \
+                insert.o search.o files.o utils.o
+        edit : $(objects)
+                cc -o edit $(objects)
+        main.o : defs.h
+        kbd.o : defs.h command.h
+        command.o : defs.h command.h
+        display.o : defs.h buffer.h
+        insert.o : defs.h buffer.h
+        search.o : defs.h buffer.h
+        files.o : defs.h buffer.h command.h
+        utils.o : defs.h
+        .PHONY : clean
+        clean :
+                rm edit $(objects)
+```
+
+在实际使用中，`makefile` 都是这么写的。（关于 `clean` 相关的内容，我们会在后续其他地方见到，你也可以参考第 `4.5` 节【伪目标】和第 `5.5` 节【`Recipes` 中的错误】。）
+
+看到了吧？隐式规则非常方便，所以它是非常重要的，使用非常频繁。
+
+
+## 2.6 `Makefile` 的另一种样式
+如果 makefile 中所有的目标文件都是由隐式规则创建的，那我们还可以写成另外一种样式。在这种样式中，规则变成了按 `prerequisite` 归类，而前面我们看到的是按 `target` 来归类的。来看看这种样式： 
+```Makefile
+        objects = main.o kbd.o command.o display.o \
+                insert.o search.o files.o utils.o
+        edit : $(objects)
+                cc -o edit $(objects)
+        $(objects) : defs.h
+        kbd.o command.o files.o : command.h
+        display.o insert.o search.o files.o : buffer.h
+```
+
+不难发现，`defs.h` 是作为所有目标文件的 `prerequisite` 的，而 `command.h` 只作为了 `kbd.o command.o files.o` 的 `prerequisite`，`buffer.h` 只作为了 `display.o insert.o search.o files.o` 的 `prerequisite`。
+
+那么问题来了，哪种样式更好呢？只能说萝卜青菜各有所好。这种看起来更紧凑，而有的人则认为按 `target` 归类更加清晰明了。
+
+## 2.7 `clean` 规则
+
+终于要隆重介绍 `clean` 这条规则了，前面基本都是一笔带过。我想你用 `makefile` 不会只想编译一个程序吧？除了编译程序之外，它还可以做很多事情，譬如，删除所有的目标文件和最终的可执行文件，使目录变得干净清爽。前面如果你执行了 `make`，你可以去看看当前目录下的文件，很多是吧？
+
+下面这条规则就是用于删除当前目录下的 `edit` 文件以及所有 `.o` 文件，前面你已经看到过很多次了：
+```Makefile
+        clean:
+                rm edit $(objects)
+```
+而实际情况中，为了避免出现一些我们意想不到的情况，我们会写成这样：
+```Makefile
+        .PHONY : clean
+        clean:
+                -rm edit $(objects)
+```
+`.PHONY : clean` 把 `clean` 定义为一个`伪目标`，这样就能防止 `make` 去调用一个真实存在的 clean 文件了。而 `rm` 之前的 `-`，则是说遇到错误继续执行。（参见第 `4.5` 节【伪目标】和第 `5.5` 节【`Recipes` 中的错误】。）
+
+我们不会把这类规则放在 `makefile` 的最前面，因为我们不希望它自动执行。别忘了我们前面讲过，放在最前面的第一个规则是默认自动执行的，一般都是我们要生成的最终文件。
+
+前面也提过，要执行 `clean` 规则，你需要敲入命令： `make clean`，不然它永远不会执行。
