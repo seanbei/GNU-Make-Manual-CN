@@ -62,3 +62,54 @@
 
 ## 3.3 包含其他 `Makefile`
 
+*学过 C 语言的对 `include` 肯定不会陌生，建议提速读完这一节。*
+
+指示符 `include` 会告诉 `make` 暂停读取当前的 `makefile`，转而读取其他 `makefile`，读完之后再继续，格式如下：
+```Makefile
+    include filenames...
+```
+`filenames...` 是指可以是一个或多个文件。`filenames` 也是可以是 `shell` 命令。如果 `filenames` 是空的，啥都不会执行，也不会报错。
+
+上面这一行代码，`include` 前面有没有空格都无所谓，都会被忽略。但是，如果前面有 `tab`，那就不行了，因为这一行会被当成 `recipe`。所以，`include` 前面不能带 `tab`（或者更准确的说是 `.RECIPEPREFIX` 的值）。在 `include` 与 `filename` 之间必须有空格，多个 `filename` 之间也得有空格。注释符 `#` 号在行尾可以使用。如果 `filename` 文件名包含了变量或者函数名，它们会被展开。参见第 `6` 章【如何使用变量】。
+
+例如，如果你有三个 `.mk` 文件：`a.mk`、`b.mk` 和 `c.mk`，`$(bar)` 扩展为 `bish bash`，于是以下代码：
+```Makefile
+    include foo *.mk $(bar)
+```
+等同于：
+```Makefile
+    include foo a.mk b.mk c.mk bish bash
+```
+
+make 是这么处理 include 指示符的。首先，读取 make 查找到的或指定的 makefile，读取过程中遇到 include，make 就会依次读取 include 后面的文件，全部读取完毕，make 回到最开始的 makefile 接着往下读取。
+
+使用 include 的第一个场景是，处在不同目录下的 makefile 需要使用同一套变量或规则。这个好处显而易见，后面对变量或规则不管是新增还是修改，只要在一个 makefile 里改就行，不会造成遗漏。
+
+另外一个场景是，你想要从源文件自动生成依赖文件，这些依赖项就可以单独放在一个文件中，然后 include 到主 makefile 中。这通常比常规做法更简洁。常规做法是将依赖项放到同一个 makefile 中，如前面我们最开始的例子。
+
+如果指定的文件名不是以斜杠 / 开始，
+
+## 3.4 MAKEFILES 变量
+
+
+## 3.5 How Makefiles Are Remade
+
+
+## 3.6 Makefile 重载
+
+*学过编程的人可能听过`重载函数`，重载一个函数，意思就是用一个新的函数来替换原有的函数，函数名保持不变。在 makefile 中也可以使用重载。*
+
+有时候，会遇到你要写的 makefile 跟之前的某一个 makefile 内容很相似，这个时候，就可以将之前的那个 include 到要写的这个里面，然后添加不同的目标或变量。但是，如果不想用原先 makefile 中目标的生成规则，而是想重新为这个目标定义一个规则，怎么办呢？是不是可以像重载函数那样，直接写上去就行了呢？并不能。因为两个 makefile 给同一个目标定义不同的 recipe 是无效的。我们有另外一种方式。
+
+在要新写的 makefile 中
+
+例如，之前已经存在的 makefile 叫 Makefile，它定义了如何来生成目标 foo（以及其他目标）。新写的 makefile 叫 GNUmakefile，里面这么写：
+```Makefile
+    foo:
+            frobnicate > foo
+    %: force
+            @$(MAKE) -f Makfile $@
+    force: ;
+```
+
+如果运行 make foo，make 会在 GNUmakefile 中找到它，发现需要执行 recipe：frobnicate > foo。如果运行 make bar，由于 GNUmakefile 中并没有目标 bar，所以会使用模式匹配规则：make -f Makefile bar。这时，make 就会去 Makefile 中寻找目标 bar，如果有，就会执行。对于 GNUmakefile 没有定义的目标，make 都会去 Makefile 里面找。
