@@ -49,7 +49,6 @@
 这样，`oneword` 即使被拆成了两行，`make` 依然会认为它是一个整体。
 
 
-
 ## 3.2 给 `makefile` 取名
 
 默认情况下，`make` 会按照以下顺序寻找 `makefile`：`GNUmakefile`、`makefile`、`Makefile`。
@@ -58,4 +57,8 @@
 
 如果 make 没找到上面这些名字，那就不会执行。这时你就需要自己指定目标了，make 会通过自带的隐式规则来执行，参见第 10 章【使用隐式规则】。
 
-如果你想给 makefile 起一个另外的名字
+如果你不想使用上面的标准名称，而想给 `makefile` 起另外的名字，也是可以的。这时需要使用 `-f` 或 `-file` 可选参数来指定这个文件名。`-f <文件名>` 或 `-file <文件名>` 使得 `make` 把这个文件当作 `makefile` 来使用。如果有多个 `makefile`，那就跟多个 `-f` 或 `-file` 就好。`make` 会把所有的 `makefile` 文件会按顺序串联起来。但是，一旦使用了 `-f` 或 `-file`，原先默认的 `GNUmakefile`，`makefile` 和 `Makefile` 就不会被识别了。
+
+
+## 3.3 包含其他 `Makefile`
+
